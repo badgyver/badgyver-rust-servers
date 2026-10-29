@@ -2,7 +2,7 @@
 
 Reads the map every Rust server on the [Badgyver Rust server list](https://badgyver.com/servers/) publishes about itself, so the list can show each server's real map.
 
-Every 15 minutes a GitHub Actions job takes the listed servers from `https://badgyver.com/wp-json/bgrs/v1/targets`, asks each one for its rules (Valve's A2S query) and writes to [`data/servers.json`](data/servers.json):
+Every 15 minutes a GitHub Actions job takes the listed servers from `https://media.badgyver.com/_state/rust-targets.json` (the site's list, copied there by its Cloudflare Worker), asks each one for its rules (Valve's A2S query) and writes to [`data/servers.json`](data/servers.json):
 
 - the map picture Facepunch hosts for the server, its seed and size, and the map download;
 - the server's own description, header image, logo and website.
