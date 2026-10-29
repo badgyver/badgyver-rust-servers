@@ -6,8 +6,21 @@ on:
 jobs:
   diag:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 8
     steps:
       - uses: actions/checkout@v4
-      - name: Which servers answer
-        run: python3 diag.py 193.57.8.57:28010 91.212.121.215:28017 5.196.83.37:28015 80.153.52.43:28015 74.91.125.249:28022 45.88.230.141:28016 192.223.30.71:28016 157.90.134.101:28017 95.217.75.83:25017 168.100.161.35:28018 54.36.126.28:28017 194.164.96.174:28014 51.77.65.43:28016 104.129.132.129:28014
+      - name: Without a tunnel
+        run: python3 diag.py 51.77.65.43:28016 104.129.132.129:28014 193.57.8.57:28010 168.100.161.35:28018 74.91.125.249:28022
+      - name: Cloudflare WARP (official Linux client)
+        run: |
+          curl -fsSL https://pkg.cloudflareclient.com/pubkey.gpg | sudo gpg --yes --dearmor --output /usr/share/keyrings/cloudflare-warp-archive-keyring.gpg
+          echo "deb [signed-by=/usr/share/keyrings/cloudflare-warp-archive-keyring.gpg] https://pkg.cloudflareclient.com/ $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/cloudflare-client.list
+          sudo apt-get update -qq && sudo apt-get install -y -qq cloudflare-warp
+          sleep 3
+          warp-cli --accept-tos registration new
+          warp-cli --accept-tos connect
+          sleep 8
+          warp-cli --accept-tos status
+          curl -s https://www.cloudflare.com/cdn-cgi/trace | grep -E 'warp|ip='
+      - name: Through the tunnel
+        run: python3 diag.py 51.77.65.43:28016 104.129.132.129:28014 193.57.8.57:28010 168.100.161.35:28018 74.91.125.249:28022
