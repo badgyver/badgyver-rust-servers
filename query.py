@@ -2,7 +2,7 @@
 
 badgyver.com lists Rust servers, but its host cannot send the game's UDP
 queries. This script runs on GitHub Actions instead: it takes the list of
-servers from https://badgyver.com/wp-json/bgrs/v1/targets, asks each one for
+servers the site publishes (copied to media.badgyver.com), asks each one for
 its rules (Valve's A2S_RULES), and writes what changes only with a wipe to
 data/servers.json: the map picture Facepunch hosts for the server, the map
 seed and size, the map download, the server's own description, header image
@@ -19,7 +19,9 @@ import sys
 import time
 import urllib.request
 
-TARGETS = 'https://badgyver.com/wp-json/bgrs/v1/targets'
+# The site's list of servers, passed on through R2 by the site's Cloudflare
+# Worker: the site's host does not answer GitHub's machines.
+TARGETS = 'https://media.badgyver.com/_state/rust-targets.json'
 OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'servers.json')
 HEAD = b'\xff\xff\xff\xff'
 TIMEOUT = 3.0
