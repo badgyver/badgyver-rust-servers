@@ -1,0 +1,13 @@
+name: UDP diagnostic
+
+on:
+  workflow_dispatch:
+
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Which servers answer
+        run: python3 diag.py 193.57.8.57:28010 91.212.121.215:28017 5.196.83.37:28015 80.153.52.43:28015 74.91.125.249:28022 45.88.230.141:28016 192.223.30.71:28016 157.90.134.101:28017 95.217.75.83:25017 168.100.161.35:28018 54.36.126.28:28017 194.164.96.174:28014 51.77.65.43:28016 104.129.132.129:28014
