@@ -1,9 +1,6 @@
-"""Diagnostic: which UDP answers reach this machine.
+"""Diagnostic: how A2S_RULES answers arrive on this machine, packet by packet.
 
-1. A DNS question to 1.1.1.1 (is outbound UDP open at all?).
-2. A2S_INFO to Rust servers on their query ports, with and without the
-   challenge, to see which ones answer and how.
-Prints one line per test. Temporary: removed once the cause is known.
+Temporary: removed once the cause is known.
 """
 import socket
 import struct
@@ -11,48 +8,44 @@ import sys
 import time
 
 HEAD = b'\xff\xff\xff\xff'
-INFO = HEAD + b'TSource Engine Query\x00'
 
 
-def dns():
-    q = struct.pack('>6H', 0x1234, 0x0100, 1, 0, 0, 0) + b'\x07example\x03com\x00' + struct.pack('>2H', 1, 1)
+def rules_trace(ip, port):
     s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    s.settimeout(3)
-    try:
-        s.sendto(q, ('1.1.1.1', 53))
-        r, _ = s.recvfrom(512)
-        return 'dns 1.1.1.1:53 -> %d bytes' % len(r)
-    except Exception as e:
-        return 'dns 1.1.1.1:53 -> %s' % e
-    finally:
-        s.close()
-
-
-def a2s(ip, port):
-    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    s.settimeout(4)
+    s.settimeout(5)
+    out = []
     t = time.time()
     try:
-        s.sendto(INFO, (ip, port))
-        r, _ = s.recvfrom(4096)
-        kind = chr(r[4]) if len(r) > 4 else '?'
-        if kind == 'A':
-            s.sendto(INFO + r[5:9], (ip, port))
-            r, _ = s.recvfrom(4096)
-            kind = 'A then ' + (chr(r[4]) if len(r) > 4 else '?')
-        name = r[6:60].split(b'\x00')[0].decode('utf-8', 'replace')
-        return '%s:%d -> %s %d bytes %dms %s' % (ip, port, kind, len(r), (time.time() - t) * 1000, name)
+        s.sendto(HEAD + b'V' + HEAD, (ip, port))
+        r, _ = s.recvfrom(65535)
+        out.append('first %d bytes type %r' % (len(r), r[4:5]))
+        if r[4:5] == b'A':
+            s.sendto(HEAD + b'V' + r[5:9], (ip, port))
+            for _ in range(10):
+                try:
+                    r, _ = s.recvfrom(65535)
+                except socket.timeout:
+                    out.append('timeout waiting for more')
+                    break
+                if r[:4] == b'\xfe\xff\xff\xff':
+                    pid, total, number = struct.unpack('<iBB', r[4:10])
+                    out.append('split id %d part %d/%d %d bytes' % (pid, number + 1, total, len(r)))
+                    if number + 1 >= total:
+                        break
+                else:
+                    out.append('single %d bytes type %r' % (len(r), r[4:5]))
+                    break
     except Exception as e:
-        return '%s:%d -> %s' % (ip, port, e)
+        out.append('error %s' % e)
     finally:
         s.close()
+    return '%s:%d (%dms): %s' % (ip, port, (time.time() - t) * 1000, ' | '.join(out))
 
 
 def main():
-    print(dns())
     for a in sys.argv[1:]:
         ip, port = a.rsplit(':', 1)
-        print(a2s(ip, int(port)))
+        print(rules_trace(ip, int(port)))
 
 
 if __name__ == '__main__':
